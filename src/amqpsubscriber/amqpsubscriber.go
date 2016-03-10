@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	debugMode            bool
 	amqpConnectionString string
 	exchangeName         string
 	exchangeDurable      bool
@@ -21,9 +20,9 @@ var (
 	unquote              bool
 )
 
-func failOnError(err error, msg string) {
+func panicOnError(err error, msg string) {
 	if err != nil {
-		log.Panicf("%s: %s\n", msg, err)
+		log.Panicf("%s: %s\n", msg, err.Error())
 	}
 }
 
@@ -32,21 +31,13 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "AMQP Subscriber"
 	app.Usage = "AMQP Subscriber."
-	app.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name:        "debug",
-			Usage:       "debug mode",
-			EnvVar:      "AMQP_SUBSCRIBERD_DEBUG",
-			Destination: &debugMode,
-		},
-	}
 	app.Action = func(c *cli.Context) {
 		log.Println("see usage!")
 	}
 	app.Commands = []cli.Command{
 		{
 			Name:  "subscribe",
-			Usage: "подписаться на результаты генерации прайсов",
+			Usage: "Subscribe to queue",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "amqp",
@@ -108,11 +99,11 @@ func main() {
 func handleResults() {
 
 	conn, err := amqp.Dial(amqpConnectionString)
-	failOnError(err, "Failed to connect to RabbitMQ")
+	panicOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
 	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
+	panicOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
 	err = ch.ExchangeDeclare(
@@ -124,10 +115,10 @@ func handleResults() {
 		exchangeNoWait,
 		nil,
 	)
-	failOnError(err, "Failed to declare an exchange")
+	panicOnError(err, "Failed to declare an exchange")
 
 	err = ch.Qos(1, 0, false)
-	failOnError(err, "Qos error")
+	panicOnError(err, "Qos error")
 
 	durable := len(queueName) > 0
 	deleteWhenUnused := len(queueName) == 0
@@ -140,7 +131,7 @@ func handleResults() {
 		false, // no-wait
 		nil,   // arguments
 	)
-	failOnError(err, "Failed to declare a queue")
+	panicOnError(err, "Failed to declare a queue")
 
 	err = ch.QueueBind(
 		q.Name,
@@ -149,7 +140,7 @@ func handleResults() {
 		false,
 		nil,
 	)
-	failOnError(err, "Failed to bind a queue")
+	panicOnError(err, "Failed to bind a queue")
 
 	msgs, err := ch.Consume(
 		q.Name,
@@ -160,7 +151,7 @@ func handleResults() {
 		false, // no-wait
 		nil,   // args
 	)
-	failOnError(err, "Failed to register a consumer")
+	panicOnError(err, "Failed to register a consumer")
 
 	forever := make(chan bool)
 
@@ -182,7 +173,7 @@ func handleResults() {
 
 	select {
 	case amqpErr := <-ch.NotifyClose(make(chan *amqp.Error)):
-		log.Fatalln("NotifyClose: " + amqpErr.Error())
+		log.Panicln("NotifyClose: " + amqpErr.Error())
 	case <-forever:
 		log.Println("forever = true")
 	}
