@@ -88,7 +88,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) {
-				handleResults()
+				subscribe()
 			},
 		},
 	}
@@ -96,7 +96,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-func handleResults() {
+func subscribe() {
 
 	conn, err := amqp.Dial(amqpConnectionString)
 	panicOnError(err, "Failed to connect to RabbitMQ")
