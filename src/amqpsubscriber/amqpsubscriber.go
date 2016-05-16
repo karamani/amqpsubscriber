@@ -6,7 +6,6 @@ import (
 	"github.com/streadway/amqp"
 	"log"
 	"os"
-	"strconv"
 )
 
 var (
@@ -17,7 +16,6 @@ var (
 	exchangeExclusive    bool
 	exchangeNoWait       bool
 	queueName            string
-	unquote              bool
 )
 
 func panicOnError(err error, msg string) {
@@ -80,11 +78,6 @@ func main() {
 					Usage:       "queue name",
 					EnvVar:      "AMQPSUBSCRIBER_QUEUE",
 					Destination: &queueName,
-				},
-				cli.BoolFlag{
-					Name:        "unquote",
-					Usage:       "unquote message body",
-					Destination: &unquote,
 				},
 			},
 			Action: func(c *cli.Context) {
@@ -156,17 +149,8 @@ func subscribe() {
 	forever := make(chan bool)
 
 	go func() {
-		var body string
 		for d := range msgs {
-			body = string(d.Body)
-			if unquote {
-				body = "\"" + body + "\""
-				body, err = strconv.Unquote(body)
-				if err != nil {
-					log.Println(err.Error())
-				}
-			}
-			fmt.Printf("%s\n", body)
+			fmt.Printf("%s\n", string(d.Body))
 		}
 		forever <- true
 	}()
